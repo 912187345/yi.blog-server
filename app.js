@@ -275,7 +275,7 @@ app.post('/get-blog',(req, res)=>{
         return res.send(data)
     }
     
-    let mysql = `select * from blog`;
+    let mysql = `select title, from blog`;
     mySqlHandle(mysql)
     .then(rst=>{
         let data = {
