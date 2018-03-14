@@ -1,0 +1,35 @@
+{
+  "name": "todolist",
+  "version": "1.0.0",
+  "description": "学习node，写一个留言板功能",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "supervisor ./app.js"
+  },
+  "author": "xiaoyi",
+  "license": "ISC",
+  "devDependencies": {
+    "cookie-parser": "^1.4.3",
+    "ejs": "^2.5.7",
+    "express": "^4.15.4",
+    "express-session": "^1.15.5"
+  },
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "connect-redis": "^3.3.2",
+    "continuation-local-storage": "^3.2.1",
+    "jquery": "^3.2.1",
+    "moment": "^2.21.0",
+    "mongoose": "^4.11.7",
+    "mysql": "^2.14.1",
+    "mysql2": "^1.5.2",
+    "node-uuid": "^1.4.8",
+    "pg": "^7.4.1",
+    "pg-hstore": "^2.3.2",
+    "sequelize": "^4.35.2",
+    "sqlite3": "^3.1.13",
+    "tedious": "^2.3.1",
+    "vue": "^2.4.2"
+  }
+}
