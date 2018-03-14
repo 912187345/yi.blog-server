@@ -23,6 +23,7 @@ const sequelize = new Sequelize('blog','root','69824686',{ // orm
     host:'localhost',
     dateStrings:true,
     dialect: 'mysql',
+    logging:false,
     pool: {
         max: 5,
         min: 0,
@@ -68,7 +69,7 @@ const BLOG = sequelize.define('blog',{
         }
     },
     content:{
-        type:Sequelize.STRING,
+        type:Sequelize.TEXT,
         field:'text'
     },
     title:{
@@ -133,8 +134,8 @@ COMMENTS.hasMany(replycomments,{
     sourceKey:'id'
 })
 
-app.use(bodyParser.urlencoded({ extended: true }))
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ limit:'50mb',extended: true }))
+app.use(bodyParser.json({limit:'50mb'}));
 
 const mysqlConOption = {
     host     : 'localhost',
@@ -148,7 +149,7 @@ var connection = mysql.createConnection(mysqlConOption)
 connection.connect();
 
 app.use(cookieParser());
-
+app.use(express.static('./static'));
 app.use((req,res,next)=>{ //拦截器
     let url = ['/register','/logon'] //里面的请求不需要带token
     if( url.indexOf(req.originalUrl) === -1 ){
@@ -298,29 +299,29 @@ app.post('/add-blog',(req, res)=>{
     let title = param.title;
     let date = nowTime();
     let blogId = new Date().getTime()+userToken+'';
-
-    let mysql = `insert into blog (userToken,date,text,blogId,title) 
-                    values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
-    mySqlHandle(mysql)
-    .then(rst=>{
-            let token = req.body.token;
-            let mysql = `select * from blog where userToken = "${token}"`;
-            mySqlHandle(mysql)
-            .then((rst)=>{
-                let data = {
-                    status:SUCCESS,
-                    data:rst
-                }
-                res.send(data);
-            })
-    },err=>{
+    BLOG.create({
+        userToken:userToken,
+        content:text,
+        title:title,
+        date:date,
+        blogId:blogId
+    })
+    .then(()=>{
+        let data = {
+            status:SUCCESS,
+            data:''
+        }
+        res.send(data);
+    })
+    .catch((err)=>{
         let data = {
             status:FAIL,
             data:err
         }
-        res.send(data)
+        res.send(data);
     })
-
+    let mysql = `insert into blog (userToken,date,text,blogId,title) 
+                    values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
 })
 
 app.post('/delete-blog',(req, res)=>{
@@ -478,7 +479,6 @@ app.post('/reply-comments',(req, res)=>{
     })
 })
 // blog E
-
 const port = process.env.port || 8082;
 app.listen(port);
 
