@@ -1,7 +1,7 @@
 {
   "name": "todolist",
   "version": "1.0.0",
-  "description": "学习node，写一个留言板功能",
+  "description": "学习node，写一个博客",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "body-parser": "^1.17.2",
+    "cheerio": "^1.0.0-rc.2",
     "connect-redis": "^3.3.2",
     "continuation-local-storage": "^3.2.1",
+    "images": "^3.0.1",
     "jquery": "^3.2.1",
     "moment": "^2.21.0",
     "mongoose": "^4.11.7",

@@ -3,17 +3,19 @@ const express = require('express');
 const app = express();
 
 const moment = require('moment');
-
 const mysql = require('mysql');
-
+const fs = require('fs');
 const bodyParser = require('body-parser'); 
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
-var RedisStore = require('connect-redis')(session);
 const uuid = require('node-uuid');
+const cheerio = require('cheerio');
+const images = require('images');
 
 const SUCCESS = 'success';
 const FAIL = 'fail';
+const WRITEPATH = './static/blogImage/'
+const blogImgPath = '/blogImage/';
 
 const Sequelize = require('sequelize'); 
 const cls = require('continuation-local-storage');
@@ -32,6 +34,7 @@ const sequelize = new Sequelize('blog','root','69824686',{ // orm
     },
     timezone: '+08:00'
 })
+
 sequelize
     .authenticate()
     .then(()=>{
@@ -75,6 +78,9 @@ const BLOG = sequelize.define('blog',{
     title:{
         type:Sequelize.STRING
     },
+    userToken:{
+        type:Sequelize.STRING
+    }
 },{timestamps: false,freezeTableName: true});
 
 const COMMENTS = sequelize.define('comments',{
@@ -126,10 +132,22 @@ USER.hasMany(BLOG,{
     sourceKey:'token',
     foreignKey:'userToken'
 })
+BLOG.belongsTo(USER,{
+    foreignKey:'userToken',
+    targetKey:'token'
+})
 BLOG.hasMany(COMMENTS,{
     foreignKey:'blogId'
 })
+COMMENTS.belongsTo(BLOG,{
+    foreignKey:'blogId',
+    targetKey:'blogId'
+})
 COMMENTS.hasMany(replycomments,{
+    foreignKey:'commentsId',
+    sourceKey:'id'
+})
+replycomments.belongsTo(COMMENTS,{
     foreignKey:'commentsId',
     sourceKey:'id'
 })
@@ -172,6 +190,7 @@ app.use((req,res,next)=>{ //拦截器
     }
 })
 
+// 登录 S
 app.post('/register',(req, res)=>{
     let param = req.body;
     let username = param.userName;
@@ -260,27 +279,30 @@ app.post('/logon',(req,res)=>{
         }
     })
 })
-
+// 登录 E
 
 // blog S 后期需要拆分开
 app.post('/get-blog',(req, res)=>{
 
-    try {
-        var token = req.body.token;
-    } catch (error) {
-        let data = {
-            status:FAIL,
-            data:'请重新登录'
+    BLOG.findAll({
+        attributes:['title','blogId','date'],
+        include:[{
+            model:USER,
+            attributes:['username'],
+        },{
+            model:COMMENTS
+        }],
+        order:[['date','DESC']]
+    })
+    .then((rst)=>{
+        let va = rst;
+        for( let i = 0; i < va.length;i++ ){
+            va[i].dataValues.commentsLength = va[i].dataValues.comments.length;
+            delete va[i].dataValues.comments;
         }
-        return res.send(data)
-    }
-    
-    let mysql = `select title, from blog`;
-    mySqlHandle(mysql)
-    .then(rst=>{
         let data = {
             status:SUCCESS,
-            data:rst
+            data:va
         }
         res.send(data);
     },err=>{
@@ -290,35 +312,73 @@ app.post('/get-blog',(req, res)=>{
         }
         res.send(data)
     })
+    let mysql = `select title,blogId from blog`;
 })
 
 app.post('/add-blog',(req, res)=>{
     let param = req.body;
     let userToken = param.token;
-    let text = param.text;
+    var text = param.text;
     let title = param.title;
     let date = nowTime();
     let blogId = new Date().getTime()+userToken+'';
-    BLOG.create({
-        userToken:userToken,
-        content:text,
-        title:title,
-        date:date,
-        blogId:blogId
-    })
+    let $ = cheerio.load(text);
+    let img = $('img');
+    function base64Change(){
+        return new Promise((res,rej)=>{
+            if( !img.length ){ return res() }
+            for( let i = 0; i < img.length; i++ ){
+                let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
+                let dataBuffer = new Buffer(base64Data,'base64');
+                let opt = {
+                    fileName:WRITEPATH+blogId+i+'.jpg',
+                    dataBuffer:dataBuffer
+                }
+                try{
+                    writeFile(opt)
+                    .then((rst)=>{
+                        let path = opt.fileName.replace('./static','');
+                        text = text.replace(img[i].attribs.src,path);
+                        images(opt.fileName)
+                        .save(opt.fileName,{
+                            quality:60
+                        })
+                        if( i+1 === img.length ){
+                            res();
+                        }
+                    })
+                } catch(err) {
+                    rej();
+                    console.log(err);
+                }
+            }
+        })
+    }
+    base64Change()
     .then(()=>{
-        let data = {
-            status:SUCCESS,
-            data:''
-        }
-        res.send(data);
-    })
-    .catch((err)=>{
-        let data = {
-            status:FAIL,
-            data:err
-        }
-        res.send(data);
+        BLOG.create({
+            userToken:userToken,
+            content:text,
+            title:title,
+            date:date,
+            blogId:blogId
+        })
+        .then(()=>{
+            let data = {
+                status:SUCCESS,
+                data:{
+                    blogId:blogId
+                }
+            }
+            res.send(data);
+        })
+        .catch((err)=>{
+            let data = {
+                status:FAIL,
+                data:err
+            }
+            res.send(data);
+        })
     })
     let mysql = `insert into blog (userToken,date,text,blogId,title) 
                     values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
@@ -531,5 +591,17 @@ function getTime(date){ //对数据库的时间进行处理
 
 function momentDate(time){
     return moment(time).format('YYYY-MM-DD HH:mm:ss');
+}
+
+function writeFile(opt){
+    return new Promise((res,rej)=>{
+        fs.writeFile(opt.fileName,opt.dataBuffer,(err,file)=>{
+            if(err){
+                throw err;
+            }else{
+                res(file);
+            }
+        })
+    })
 }
 // common function E
