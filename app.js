@@ -11,6 +11,7 @@ const session = require('express-session');
 const uuid = require('node-uuid');
 const cheerio = require('cheerio');
 const images = require('images');
+const multiparty = require('multiparty');
 
 const SUCCESS = 'success';
 const FAIL = 'fail';
@@ -25,7 +26,7 @@ const sequelize = new Sequelize('blog','root','69824686',{ // orm
     host:'localhost',
     dateStrings:true,
     dialect: 'mysql',
-    logging:false,
+    // logging:false,
     pool: {
         max: 5,
         min: 0,
@@ -56,7 +57,8 @@ const USER = sequelize.define('user',{
     },
     sex:Sequelize.STRING,
     email:Sequelize.STRING,
-    token:Sequelize.STRING
+    token:Sequelize.STRING,
+    headImg:Sequelize.STRING
 },{timestamps: false,freezeTableName: true})
 
 const BLOG = sequelize.define('blog',{
@@ -168,9 +170,10 @@ connection.connect();
 
 app.use(cookieParser());
 app.use(express.static('./static'));
+
 app.use((req,res,next)=>{ //拦截器
-    let url = ['/register','/logon'] //里面的请求不需要带token
-    if( url.indexOf(req.originalUrl) === -1 ){
+    let url = ['/api/register','/api/logon','/api/upload-head-image'] //里面的请求不需要带token
+    if( url.indexOf(req.originalUrl) === -1 && req.originalUrl.indexOf('/api/') !== -1 ){
 
         if(!req.body.token){
 
@@ -190,14 +193,65 @@ app.use((req,res,next)=>{ //拦截器
     }
 })
 
+// setting
+app.post('/api/upload-head-image',(req,res)=>{
+    let form = new multiparty.Form({uploadDir:'./static/userHeaderIcon'})
+    form.parse(req,(err, fields, files)=>{
+        let inputFile = files.file[0];
+        let filePath = files.file[0].path;
+        let token = fields.token[0];
+        let renamePath = __dirname+'/static/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename;
+        fs.rename(filePath,renamePath,(err)=>{
+            if(!err){
+                USER.update({
+                    headImg:'/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename
+                },{
+                    where:{
+                        token:token
+                    }
+                })
+                .then(()=>{
+                    images(renamePath)
+                    .save(renamePath,{
+                        quality:60
+                    })
+                    let data = {
+                        status:SUCCESS,
+                        data:{
+                            headImg:'/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename
+                        }
+                    }
+                    res.send(data);
+                },err=>{
+                    let data = {
+                        status:FAIL,
+                        data:''
+                    }
+                    res.send(data);
+                    errHandle(err);
+                })
+                .catch(err=>{
+                    errHandle(err);
+                })
+            }else{
+                errHandle(err);
+            }
+        })
+    })
+})
+// setting
+
 // 登录 S
-app.post('/register',(req, res)=>{
+const DEFAULT_BOY_ICON = '/icon/head_boy.png';
+const DEFAULT_GIRL_ICON = '/icon/head_girl.png';
+app.post('/api/register',(req, res)=>{
     let param = req.body;
     let username = param.userName;
     let pwd = param.pwd;
     let email = param.email;
     let sex = param.sex;
     let token = uuid.v4().replace(/-/g,'');
+    let defaultHeadImg = sex === 'boy' ? DEFAULT_BOY_ICON : DEFAULT_GIRL_ICON;
     USER.findOrCreate({
         where:{
             username:username
@@ -207,6 +261,7 @@ app.post('/register',(req, res)=>{
             sex:sex,
             email:email,
             token:token,
+            headImg:defaultHeadImg
         }
     })
     .spread((user,create)=>{
@@ -218,7 +273,8 @@ app.post('/register',(req, res)=>{
                         username:username,
                         email:email,
                         sex:sex,
-                        token:token
+                        token:token,
+                        headImg:defaultHeadImg
                     }
                 }
             res.send(data);
@@ -243,7 +299,7 @@ app.post('/register',(req, res)=>{
     values("${username}", "${pwd}", "${sex}", "${email}", "${token}")`;
 })
 
-app.post('/logon',(req,res)=>{
+app.post('/api/logon',(req,res)=>{
     let param = req.body;
     let username = param.user;
     let password = param.pwd;
@@ -282,7 +338,7 @@ app.post('/logon',(req,res)=>{
 // 登录 E
 
 // blog S 后期需要拆分开
-app.post('/get-blog',(req, res)=>{
+app.post('/api/get-blog',(req, res)=>{
 
     BLOG.findAll({
         attributes:['title','blogId','date'],
@@ -315,7 +371,7 @@ app.post('/get-blog',(req, res)=>{
     let mysql = `select title,blogId from blog`;
 })
 
-app.post('/add-blog',(req, res)=>{
+app.post('/api/add-blog',(req, res)=>{
     let param = req.body;
     let userToken = param.token;
     var text = param.text;
@@ -384,7 +440,7 @@ app.post('/add-blog',(req, res)=>{
                     values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
 })
 
-app.post('/delete-blog',(req, res)=>{
+app.post('/api/delete-blog',(req, res)=>{
     let param = req.body;
     let id = param.id;
     sequelize.transaction((t)=>{
@@ -422,7 +478,7 @@ app.post('/delete-blog',(req, res)=>{
     })
 })
 
-app.post('/get-blog-by-id',(req, res)=>{
+app.post('/api/get-blog-by-id',(req, res)=>{
     let token = req.body.token;
     let id = req.body.id;
     BLOG.findOne({
@@ -455,7 +511,7 @@ app.post('/get-blog-by-id',(req, res)=>{
                 WHERE b.blogId = "${id}" `
 })
 
-app.post('/blog-comments',(req, res)=>{
+app.post('/api/blog-comments',(req, res)=>{
     let param = req.body;
     let obj = {
         blogId:param.blogId,
@@ -482,7 +538,7 @@ app.post('/blog-comments',(req, res)=>{
     })
 })
 
-app.post('/delete-comments',(req, res)=>{
+app.post('/api/delete-comments',(req, res)=>{
     let param = req.body;
     let commentsId = param.commentsId;
     sequelize.transaction((t)=>{
@@ -514,7 +570,7 @@ app.post('/delete-comments',(req, res)=>{
     let sql = `DELETE FROM comments WHERE id = "${commentsId}"`;
 })
 
-app.post('/reply-comments',(req, res)=>{
+app.post('/api/reply-comments',(req, res)=>{
     let param = req.body;
     let obj = {
         toToken:param.toToken,
@@ -538,8 +594,18 @@ app.post('/reply-comments',(req, res)=>{
         errHandle(err);
     })
 })
+var indexFile;
+fs.readFile(__dirname+'/static/index.html',(err,data)=>{
+    indexFile = data;
+})
+// app.use((req,res,next)=>{
+//     res.header("Content-Type","text/html");
+//     res.status(200);
+//     res.send(indexFile.toString());
+//     res.end();
+// })
 // blog E
-const port = process.env.port || 8082;
+const port = process.env.port || 8085;
 app.listen(port);
 
 // common function S
