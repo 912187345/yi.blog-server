@@ -17,6 +17,8 @@ const SUCCESS = 'success';
 const FAIL = 'fail';
 const WRITEPATH = './static/blogImage/'
 const blogImgPath = '/blogImage/';
+const DEFAULT_BOY_ICON = '/icon/head_boy.png';
+const DEFAULT_GIRL_ICON = '/icon/head_girl.png';
 
 const Sequelize = require('sequelize'); 
 const cls = require('continuation-local-storage');
@@ -200,50 +202,80 @@ app.post('/api/upload-head-image',(req,res)=>{
         let inputFile = files.file[0];
         let filePath = files.file[0].path;
         let token = fields.token[0];
-        let renamePath = __dirname+'/static/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename;
-        fs.rename(filePath,renamePath,(err)=>{
-            if(!err){
-                USER.update({
-                    headImg:'/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename
-                },{
-                    where:{
-                        token:token
-                    }
-                })
-                .then(()=>{
-                    images(renamePath)
-                    .save(renamePath,{
-                        quality:60
-                    })
-                    let data = {
-                        status:SUCCESS,
-                        data:{
-                            headImg:'/userHeaderIcon/'+fields.token[0]+inputFile.originalFilename
-                        }
-                    }
-                    res.send(data);
-                },err=>{
-                    let data = {
-                        status:FAIL,
-                        data:''
-                    }
-                    res.send(data);
-                    errHandle(err);
-                })
-                .catch(err=>{
-                    errHandle(err);
-                })
-            }else{
-                errHandle(err);
+        let newHeadName = '/userHeaderIcon/'+fields.token[0]+new Date().getTime()+'.jpg';
+        let renamePath = __dirname+'/static' + newHeadName;
+        USER.findOne({
+            where:{
+                token:token
             }
+        })
+        .then((rst)=>{
+            return new Promise((res,rej)=>{
+                if(rst.headImg && rst.headImg !== DEFAULT_BOY_ICON && rst.headImg !== DEFAULT_GIRL_ICON){
+                    fs.unlink(__dirname+'/static'+rst.headImg,(err)=>{
+                        if(err) {
+
+                            errHandle(err);
+                            rej()
+                        } else {
+
+                            res();
+                        }
+                    })        
+                }else{
+                    res();
+                }
+            })
+        })
+        .then(()=>{
+            return new Promise((suc,rej)=>{
+                fs.rename(filePath,renamePath,(err)=>{
+                    if(!err){
+                        USER.update({
+                            headImg:newHeadName
+                        },{
+                            where:{
+                                token:token
+                            }
+                        })
+                        .then(()=>{
+                            images(renamePath)
+                            .save(renamePath,{
+                                quality:60
+                            })
+                            let data = {
+                                status:SUCCESS,
+                                data:{
+                                    headImg:newHeadName
+                                }
+                            }
+                            res.send(data);
+                            suc();
+                        },err=>{
+                            let data = {
+                                status:FAIL,
+                                data:''
+                            }
+                            res.send(data);
+                            errHandle(err);
+                            rej();
+                        })
+                        .catch(err=>{
+                            errHandle(err);
+                            rej();
+                        })
+                    }else{
+                        errHandle(err);
+                        rej();
+                    }
+                })
+            })
         })
     })
 })
 // setting
 
 // 登录 S
-const DEFAULT_BOY_ICON = '/icon/head_boy.png';
-const DEFAULT_GIRL_ICON = '/icon/head_girl.png';
 app.post('/api/register',(req, res)=>{
     let param = req.body;
     let username = param.userName;
