@@ -124,9 +124,17 @@ USER.hasMany(BLOG,{
     sourceKey:'token',
     foreignKey:'userToken'
 })
+USER.hasMany(COMMENTS,{
+    sourceKey:'token',
+    foreignKey:'commentsToken'
+})
 BLOG.belongsTo(USER,{
     foreignKey:'userToken',
     targetKey:'token'
+})
+USER.hasMany(replycomments,{
+    sourceKey:'token',
+    foreignKey:['toToken','fromToken'],
 })
 BLOG.hasMany(COMMENTS,{
     foreignKey:'blogId'
@@ -364,7 +372,7 @@ app.post('/api/get-blog',(req, res)=>{
         attributes:['title','blogId','date'],
         include:[{
             model:USER,
-            attributes:['username'],
+            attributes:['username','headImg'],
         },{
             model:COMMENTS
         }],
@@ -509,7 +517,14 @@ app.post('/api/get-blog-by-id',(req, res)=>{
             include:[{
                 model:replycomments,
                 as:'replycomments',
-                attributes: { exclude: ['id'] }
+                attributes: { exclude: ['id'] },
+                include:[{
+                    model:USER,
+                    attributes:['headImg'],
+                }]
+            },{
+                model:USER,
+                attributes:['headImg'],
             }]
         }],
         order:[[COMMENTS,replycomments,'replyDate','ASC']]
