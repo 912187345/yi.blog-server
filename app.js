@@ -17,8 +17,8 @@ const SUCCESS = 'success';
 const FAIL = 'fail';
 const WRITEPATH = './static/blogImage/'
 const blogImgPath = '/blogImage/';
-const DEFAULT_BOY_ICON = '/icon/head_boy.png';
-const DEFAULT_GIRL_ICON = '/icon/head_girl.png';
+const DEFAULT_BOY_ICON = '/userHeaderIcon/head_boy.png';
+const DEFAULT_GIRL_ICON = '/userHeaderIcon/head_girl.png';
 
 const Sequelize = require('sequelize'); 
 const cls = require('continuation-local-storage');
