@@ -24,19 +24,7 @@ const Sequelize = require('sequelize');
 const cls = require('continuation-local-storage');
 const clsNameSpace = cls.createNamespace('clsNameSpace');
 Sequelize.useCLS(clsNameSpace);
-const sequelize = new Sequelize('blog','root','69824686',{ // orm
-    host:'localhost',
-    dateStrings:true,
-    dialect: 'mysql',
-    // logging:false,
-    pool: {
-        max: 5,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
-    },
-    timezone: '+08:00'
-})
+const sequelize = require('./sequelizeConfig');
 
 sequelize
     .authenticate()
