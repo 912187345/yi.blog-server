@@ -13,14 +13,17 @@ const cheerio = require('cheerio');
 const images = require('images');
 const multiparty = require('multiparty');
 
+
 const SUCCESS = 'success';
 const FAIL = 'fail';
 const WRITEPATH = './static/blogImage/'
 const blogImgPath = '/blogImage/';
 const DEFAULT_BOY_ICON = '/userHeaderIcon/head_boy.png';
 const DEFAULT_GIRL_ICON = '/userHeaderIcon/head_girl.png';
-const sequelize = require('./sequelizeConfig');
 
+const util = require('./common');
+
+const sequelize = require('./sequelizeConfig');
 const USER = require('./sequelizeModel/USER');
 const COMMENTS = require('./sequelizeModel/COMMENTS');
 const BLOG = require('./sequelizeModel/BLOG');
@@ -299,8 +302,40 @@ app.post('/api/add-blog',(req, res, next)=>{
     let title = param.title;
     let date = nowTime();
     let blogId = new Date().getTime()+userToken+'';
-    let $ = cheerio.load(text);
-    let img = $('img');
+    
+    
+    util.base64Change({text:text,fileName:blogId})
+    .then((text)=>{
+        BLOG.create({
+            userToken:userToken,
+            content:text,
+            title:title,
+            date:date,
+            blogId:blogId,
+            updateTime:date
+        })
+        .then(()=>{
+            let data = {
+                status:SUCCESS,
+                data:{
+                    blogId:blogId
+                }
+            }
+            res.send(data);
+        })
+        .catch((err)=>{
+            let data = {
+                status:FAIL,
+                data:err
+            }
+            res.send(data);
+        })
+    })
+    let mysql = `insert into blog (userToken,date,text,blogId,title) 
+                    values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
+})
+
+app.post('/api/edit-blog',(req, res)=>{
     let paramBlogId = param.blogId;
     // 此一系列操作必须写成一个事务 deleteImg -->  addImg -->  updateBlog
     function deleteImg(){//修改时删除旧图片
@@ -314,86 +349,12 @@ app.post('/api/add-blog',(req, res, next)=>{
                 let text = rst.text
                 let $ = cheerio.load(text);
                 let img = $('img');
-                
+                for( let i = 0; i < img.length; i++ ){
+
+                }
             })
         })
     }
-    function base64Change(obj){ //base64转换成img
-        let img = obj.img;
-        return new Promise((res,rej)=>{
-            if( !img.length ){ return res() }
-            for( let i = 0; i < img.length; i++ ){
-                let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
-                let dataBuffer = new Buffer(base64Data,'base64');
-                let opt = {
-                    fileName:WRITEPATH+blogId+i+'.jpg',
-                    dataBuffer:dataBuffer
-                }
-                try{
-                    writeFile(opt)
-                    .then((rst)=>{
-                        let path = opt.fileName.replace('./static','');
-                        text = text.replace(img[i].attribs.src,path);
-                        images(opt.fileName)
-                        .save(opt.fileName,{
-                            quality:60
-                        })
-                        if( i+1 === img.length ){
-                            res(text);
-                        }
-                    })
-                } catch(err) {
-                    rej();
-                    console.log(err);
-                }
-            }
-        })
-    }
-    base64Change()
-    .then(()=>{
-        if( param.type && param.type === 'update' ){
-            BLOG.update({
-                content:text,
-                title:title,
-                updateTime:nowTime()
-            },{
-                where:{
-                    blogId:paramBlogId
-                }
-            })
-        }else{
-            BLOG.create({
-                userToken:userToken,
-                content:text,
-                title:title,
-                date:date,
-                blogId:blogId,
-                updateTime:date
-            })
-            .then(()=>{
-                let data = {
-                    status:SUCCESS,
-                    data:{
-                        blogId:blogId
-                    }
-                }
-                res.send(data);
-            })
-            .catch((err)=>{
-                let data = {
-                    status:FAIL,
-                    data:err
-                }
-                res.send(data);
-            })
-        }
-    })
-    let mysql = `insert into blog (userToken,date,text,blogId,title) 
-                    values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
-})
-
-app.post('/api/update-blog',(req, res)=>{
-
 })
 
 app.post('/api/delete-blog',(req, res)=>{
@@ -626,15 +587,5 @@ function insertSql(tabel,obj){
 function getTime(date){ //对数据库的时间进行处理
     return date.slice(0,+date.length - 6);
 }
-function writeFile(opt){
-    return new Promise((res,rej)=>{
-        fs.writeFile(opt.fileName,opt.dataBuffer,(err,file)=>{
-            if(err){
-                throw err;
-            }else{
-                res(file);
-            }
-        })
-    })
-}
+
 // common function E
