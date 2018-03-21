@@ -19,12 +19,13 @@ const WRITEPATH = './static/blogImage/'
 const blogImgPath = '/blogImage/';
 const DEFAULT_BOY_ICON = '/userHeaderIcon/head_boy.png';
 const DEFAULT_GIRL_ICON = '/userHeaderIcon/head_girl.png';
-
-const Sequelize = require('sequelize'); 
-const cls = require('continuation-local-storage');
-const clsNameSpace = cls.createNamespace('clsNameSpace');
-Sequelize.useCLS(clsNameSpace);
 const sequelize = require('./sequelizeConfig');
+
+const USER = require('./sequelizeModel/USER');
+const COMMENTS = require('./sequelizeModel/COMMENTS');
+const BLOG = require('./sequelizeModel/BLOG');
+const replycomments = require('./sequelizeModel/replycomments');
+const relationMain = require('./sequelizeModel/relationMain')();
 
 sequelize
     .authenticate()
@@ -34,123 +35,6 @@ sequelize
     .catch(err=>{
         console.error('error',err);
     })
-const Op = Sequelize.Op;
-// define data obj model S 之后应该也要拆分出来
-// 字段属性 field 自定义key名
-const USER = sequelize.define('user',{
-    username:Sequelize.STRING,
-    password:Sequelize.STRING,
-    userid:{
-        type:Sequelize.INTEGER,
-        primaryKey:true,
-        autoIncrement:true 
-    },
-    sex:Sequelize.STRING,
-    email:Sequelize.STRING,
-    token:Sequelize.STRING,
-    headImg:Sequelize.STRING
-},{timestamps: false,freezeTableName: true})
-
-const BLOG = sequelize.define('blog',{
-    blogId:{
-        type:Sequelize.STRING,
-        primaryKey:true
-    },
-    date:{
-        type:Sequelize.DATE,
-        get(){
-            let date = this.getDataValue('date')
-            return momentDate(date);
-        }
-    },
-    content:{
-        type:Sequelize.TEXT,
-        field:'text'
-    },
-    title:{
-        type:Sequelize.STRING
-    },
-    userToken:{
-        type:Sequelize.STRING
-    }
-},{timestamps: false,freezeTableName: true});
-
-const COMMENTS = sequelize.define('comments',{
-    blogId:{
-        type:Sequelize.STRING
-    },
-    commentsContent:{
-        type:Sequelize.STRING
-    },
-    commentsName:{
-        type:Sequelize.STRING
-    },
-    commentsToken:Sequelize.STRING,
-    commentsDate:{
-        type:Sequelize.DATE,
-        field:'date',
-        get(){
-            let date = this.getDataValue('date')
-            return momentDate(date);
-        }
-    },
-    id:{
-        type:Sequelize.STRING,
-        primaryKey:true
-    }
-},{timestamps: false,freezeTableName: true});
-
-const replycomments = sequelize.define('replycomments',{
-    replyText:Sequelize.STRING,
-    replyDate:{
-        type:Sequelize.STRING,
-        get(){
-            const date = this.getDataValue('replyDate');
-            return momentDate(date);
-        }
-    },
-    commentsId:Sequelize.STRING,
-    toToken:Sequelize.STRING,
-    fromToken:Sequelize.STRING,
-    toName:Sequelize.STRING,
-    fromName:Sequelize.STRING,
-    id:{
-        type:Sequelize.INTEGER,
-        primaryKey:true
-    },
-    blogId:Sequelize.STRING
-},{timestamps: false,freezeTableName: true});
-USER.hasMany(BLOG,{
-    sourceKey:'token',
-    foreignKey:'userToken'
-})
-USER.hasMany(COMMENTS,{
-    sourceKey:'token',
-    foreignKey:'commentsToken'
-})
-BLOG.belongsTo(USER,{
-    foreignKey:'userToken',
-    targetKey:'token'
-})
-USER.hasMany(replycomments,{
-    sourceKey:'token',
-    foreignKey:['toToken','fromToken'],
-})
-BLOG.hasMany(COMMENTS,{
-    foreignKey:'blogId'
-})
-COMMENTS.belongsTo(BLOG,{
-    foreignKey:'blogId',
-    targetKey:'blogId'
-})
-COMMENTS.hasMany(replycomments,{
-    foreignKey:'commentsId',
-    sourceKey:'id'
-})
-replycomments.belongsTo(COMMENTS,{
-    foreignKey:'commentsId',
-    sourceKey:'id'
-})
 
 app.use(bodyParser.urlencoded({ limit:'50mb',extended: true }))
 app.use(bodyParser.json({limit:'50mb'}));
@@ -200,72 +84,79 @@ app.post('/api/upload-head-image',(req,res)=>{
         let token = fields.token[0];
         let newHeadName = '/userHeaderIcon/'+fields.token[0]+new Date().getTime()+'.jpg';
         let renamePath = __dirname+'/static' + newHeadName;
-        USER.findOne({
-            where:{
-                token:token
-            }
-        })
-        .then((rst)=>{
-            return new Promise((res,rej)=>{
-                if(rst.headImg && rst.headImg !== DEFAULT_BOY_ICON && rst.headImg !== DEFAULT_GIRL_ICON){
-                    fs.unlink(__dirname+'/static'+rst.headImg,(err)=>{
-                        if(err) {
 
-                            errHandle(err);
-                            rej()
-                        } else {
-
-                            res();
-                        }
-                    })        
-                }else{
-                    res();
+        sequelize.transaction((t)=>{
+            return USER.findOne({
+                where:{
+                    token:token
                 }
             })
-        })
-        .then(()=>{
-            return new Promise((suc,rej)=>{
-                fs.rename(filePath,renamePath,(err)=>{
-                    if(!err){
-                        USER.update({
-                            headImg:newHeadName
-                        },{
-                            where:{
-                                token:token
+            .then((rst)=>{
+                return new Promise((res,rej)=>{
+                    if(rst.headImg && rst.headImg !== DEFAULT_BOY_ICON && rst.headImg !== DEFAULT_GIRL_ICON){
+                        fs.unlink(__dirname+'/static'+rst.headImg,(err)=>{
+                            if(err) {
+    
+                                errHandle(err);
+                                rej()
+                            } else {
+    
+                                res();
                             }
-                        })
-                        .then(()=>{
-                            images(renamePath)
-                            .save(renamePath,{
-                                quality:60
-                            })
-                            let data = {
-                                status:SUCCESS,
-                                data:{
-                                    headImg:newHeadName
-                                }
-                            }
-                            res.send(data);
-                            suc();
-                        },err=>{
-                            let data = {
-                                status:FAIL,
-                                data:''
-                            }
-                            res.send(data);
-                            errHandle(err);
-                            rej();
-                        })
-                        .catch(err=>{
-                            errHandle(err);
-                            rej();
-                        })
+                        })        
                     }else{
-                        errHandle(err);
-                        rej();
+                        res();
                     }
                 })
             })
+            .then(()=>{
+                return new Promise((suc,rej)=>{
+                    fs.rename(filePath,renamePath,(err)=>{
+                        if(!err){
+                            USER.update({
+                                headImg:newHeadName
+                            },{
+                                where:{
+                                    token:token
+                                }
+                            })
+                            .then(()=>{
+                                images(renamePath)
+                                .save(renamePath,{
+                                    quality:60
+                                })
+                                suc();
+                            },err=>{
+                                rej();
+                            })
+                            .catch(err=>{
+                                errHandle(err);
+                                rej();
+                            })
+                        }else{
+                            errHandle(err);
+                            rej();
+                        }
+                    })
+                })
+            })
+        })
+        .then((rst)=>{
+            let data = {
+                status:SUCCESS,
+                data:{
+                    headImg:newHeadName
+                }
+            }
+            res.send(data);
+        })
+        .catch(()=>{
+            let data = {
+                status:FAIL,
+                data:''
+            }
+            res.send(data);
+            errHandle(err);
         })
     })
 })
@@ -332,34 +223,31 @@ app.post('/api/logon',(req,res)=>{
     let username = param.user;
     let password = param.pwd;
     let data = {};
-    connection.query(`SELECT * FROM user where username = "${username}"`,(err, rst, fields)=>{
-        if( err ){
-            throw err
-        }
-        let successBol = true;
-        if(rst && rst.length ){
-            rst.forEach(ele => {
-               if( ele.password === password ){
+    USER.findOne({
+        where:{
+            username:username
+        },
+        attributes:{exclude: ['userid']}
+    })
+    .then((rst)=>{
+        if(rst){
+            if(rst.password === password){
 
-                    delete ele.password;
-                    delete ele.userid;
+                data.status = SUCCESS;
+                data.data = rst;
+                delete data.data.dataValues.password;
+                res.send(data);
+            }else{
 
-                    data.status = SUCCESS;
-                    data.data = ele;
-                    res.status(200).json(data);
-                    successBol = false;
-                    return;
-               }
-            });
-            if( successBol ){
                 data.status = FAIL;
                 data.errMsg = '密码错误';
-                res.status(200).json(data);
+                res.send(data);
             }
         }else{
+
             data.status = FAIL;
             data.errMsg = '请输入正确的用户账号';
-            res.status(200).json(data);
+            res.send(data);
         }
     })
 })
@@ -367,8 +255,13 @@ app.post('/api/logon',(req,res)=>{
 
 // blog S 后期需要拆分开
 app.post('/api/get-blog',(req, res)=>{
-
+    let param = req.body;
+    let where = {};
+    if( param.myBlog === true ){
+        where.userToken = param.token;
+    }
     BLOG.findAll({
+        where:where,
         attributes:['title','blogId','date'],
         include:[{
             model:USER,
@@ -399,7 +292,7 @@ app.post('/api/get-blog',(req, res)=>{
     let mysql = `select title,blogId from blog`;
 })
 
-app.post('/api/add-blog',(req, res)=>{
+app.post('/api/add-blog',(req, res, next)=>{
     let param = req.body;
     let userToken = param.token;
     var text = param.text;
@@ -408,7 +301,25 @@ app.post('/api/add-blog',(req, res)=>{
     let blogId = new Date().getTime()+userToken+'';
     let $ = cheerio.load(text);
     let img = $('img');
-    function base64Change(){
+    let paramBlogId = param.blogId;
+    // 此一系列操作必须写成一个事务 deleteImg -->  addImg -->  updateBlog
+    function deleteImg(){//修改时删除旧图片
+        return new Promise((res,rej)=>{
+            BLOG.findOne({
+                where:{
+                   blogId:paramBlogId
+                }
+            })
+            .then(rst=>{
+                let text = rst.text
+                let $ = cheerio.load(text);
+                let img = $('img');
+                
+            })
+        })
+    }
+    function base64Change(obj){ //base64转换成img
+        let img = obj.img;
         return new Promise((res,rej)=>{
             if( !img.length ){ return res() }
             for( let i = 0; i < img.length; i++ ){
@@ -428,7 +339,7 @@ app.post('/api/add-blog',(req, res)=>{
                             quality:60
                         })
                         if( i+1 === img.length ){
-                            res();
+                            res(text);
                         }
                     })
                 } catch(err) {
@@ -440,32 +351,49 @@ app.post('/api/add-blog',(req, res)=>{
     }
     base64Change()
     .then(()=>{
-        BLOG.create({
-            userToken:userToken,
-            content:text,
-            title:title,
-            date:date,
-            blogId:blogId
-        })
-        .then(()=>{
-            let data = {
-                status:SUCCESS,
-                data:{
-                    blogId:blogId
+        if( param.type && param.type === 'update' ){
+            BLOG.update({
+                content:text,
+                title:title,
+                updateTime:nowTime()
+            },{
+                where:{
+                    blogId:paramBlogId
                 }
-            }
-            res.send(data);
-        })
-        .catch((err)=>{
-            let data = {
-                status:FAIL,
-                data:err
-            }
-            res.send(data);
-        })
+            })
+        }else{
+            BLOG.create({
+                userToken:userToken,
+                content:text,
+                title:title,
+                date:date,
+                blogId:blogId,
+                updateTime:date
+            })
+            .then(()=>{
+                let data = {
+                    status:SUCCESS,
+                    data:{
+                        blogId:blogId
+                    }
+                }
+                res.send(data);
+            })
+            .catch((err)=>{
+                let data = {
+                    status:FAIL,
+                    data:err
+                }
+                res.send(data);
+            })
+        }
     })
     let mysql = `insert into blog (userToken,date,text,blogId,title) 
                     values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
+})
+
+app.post('/api/update-blog',(req, res)=>{
+
 })
 
 app.post('/api/delete-blog',(req, res)=>{
@@ -514,17 +442,25 @@ app.post('/api/get-blog-by-id',(req, res)=>{
         include:[{
             model:COMMENTS,
             as:'comments',
-            include:[{
+            include:[
+            {
                 model:replycomments,
                 as:'replycomments',
                 attributes: { exclude: ['id'] },
-                include:[{
+                include:[
+                {
                     model:USER,
                     attributes:['headImg'],
+                    as:'fromUser'
+                },{
+                    model:USER,
+                    attributes:['headImg'],
+                    as:'toUser'
                 }]
             },{
                 model:USER,
                 attributes:['headImg'],
+                as:'commentsUser'
             }]
         }],
         order:[[COMMENTS,replycomments,'replyDate','ASC']]
@@ -556,8 +492,7 @@ app.post('/api/blog-comments',(req, res)=>{
         id:'' + param.blogId + new Date().getTime(),
         commentsName:param.commentsName
     }
-    let sql = insertSql('comments',obj);
-    mySqlHandle(sql)
+    COMMENTS.create(obj)
     .then(rst=>{
         let data = {
             status:SUCCESS,
@@ -571,6 +506,7 @@ app.post('/api/blog-comments',(req, res)=>{
         }
         res.send(data);
     })
+    let sql = insertSql('comments',obj);
 })
 
 app.post('/api/delete-comments',(req, res)=>{
@@ -604,6 +540,7 @@ app.post('/api/delete-comments',(req, res)=>{
     })
     let sql = `DELETE FROM comments WHERE id = "${commentsId}"`;
 })
+
 
 app.post('/api/reply-comments',(req, res)=>{
     let param = req.body;
@@ -689,11 +626,6 @@ function insertSql(tabel,obj){
 function getTime(date){ //对数据库的时间进行处理
     return date.slice(0,+date.length - 6);
 }
-
-function momentDate(time){
-    return moment(time).format('YYYY-MM-DD HH:mm:ss');
-}
-
 function writeFile(opt){
     return new Promise((res,rej)=>{
         fs.writeFile(opt.fileName,opt.dataBuffer,(err,file)=>{
