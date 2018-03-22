@@ -564,12 +564,7 @@ var indexFile;
 fs.readFile(__dirname+'/static/index.html',(err,data)=>{
     indexFile = data;
 })
-// app.use((req,res,next)=>{
-//     res.header("Content-Type","text/html");
-//     res.status(200);
-//     res.send(indexFile.toString());
-//     res.end();
-// })
+
 // blog E
 const port = process.env.port || 8085;
 app.listen(port);

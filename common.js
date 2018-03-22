@@ -19,6 +19,9 @@ module.exports = (()=>{
             return new Promise((res,rej)=>{
                 if( !img.length ){ return res(text) }
                 for( let i = 0; i < img.length; i++ ){
+                    if( img[i].attribs.src.indexOf('data:image\/\w+;base64') === -1 ){ 
+                        continue;
+                    }
                     let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
                     let dataBuffer = new Buffer(base64Data,'base64');
                     let opt = {
@@ -55,6 +58,7 @@ module.exports = (()=>{
                 })
             })
         },
+        // 如果图片是一样的就不要删除
         deleteImg(obj){//删除图片
             let text = obj.text;
             return new Promise((res,rej)=>{
