@@ -13,15 +13,14 @@ const cheerio = require('cheerio');
 const images = require('images');
 const multiparty = require('multiparty');
 
-
-const SUCCESS = 'success';
-const FAIL = 'fail';
-const WRITEPATH = './static/blogImage/'
-const blogImgPath = '/blogImage/';
-const DEFAULT_BOY_ICON = '/userHeaderIcon/head_boy.png';
-const DEFAULT_GIRL_ICON = '/userHeaderIcon/head_girl.png';
-
 const util = require('./common');
+const config = require('./config');
+const FAIL = config.FAIL;
+const SUCCESS = config.SUCCESS;
+const DEFAULT_BOY_ICON = config.DEFAULT_BOY_ICON;
+const DEFAULT_GIRL_ICON = config.DEFAULT_GIRL_ICON;
+const nowTime = util.nowTime;
+const errHandle = util.errHandle;
 
 const sequelize = require('./sequelizeConfig');
 const USER = require('./sequelizeModel/USER');
@@ -303,7 +302,6 @@ app.post('/api/add-blog',(req, res, next)=>{
     let date = nowTime();
     let blogId = new Date().getTime()+userToken+'';
     
-    
     util.base64Change({text:text,fileName:blogId})
     .then((text)=>{
         BLOG.create({
@@ -336,49 +334,84 @@ app.post('/api/add-blog',(req, res, next)=>{
 })
 
 app.post('/api/edit-blog',(req, res)=>{
-    let paramBlogId = param.blogId;
-    // 此一系列操作必须写成一个事务 deleteImg -->  addImg -->  updateBlog
-    function deleteImg(){//修改时删除旧图片
-        return new Promise((res,rej)=>{
-            BLOG.findOne({
+    let param = req.body;
+    let blogId = param.blogId;
+    let userToken = param.token;
+    let text = param.text;
+    let title = param.title;
+    sequelize.transaction((t)=>{
+        return BLOG.findOne({
                 where:{
-                   blogId:paramBlogId
+                    blogId:blogId
                 }
             })
-            .then(rst=>{
-                let text = rst.text
-                let $ = cheerio.load(text);
-                let img = $('img');
-                for( let i = 0; i < img.length; i++ ){
-
-                }
+            .then((rst)=>{
+                return util.deleteImg({text:rst.content})
             })
-        })
-    }
+            .then(()=>{
+                return util.base64Change({text:text,fileName:blogId})
+            })
+            .then((text)=>{
+                return BLOG.update({
+                        content:text,
+                        title:title,
+                        updateTime:nowTime()
+                    },{
+                        where:{
+                            blogId:blogId
+                        }
+                    })
+            })
+    })
+    .then((rst)=>{
+        let data = {
+            status:SUCCESS,
+            data:rst[0]
+        }
+        res.send(data);
+    })
+    .catch((err)=>{
+        let data = {
+            status:FAIL,
+            data:err
+        }
+        res.send(data);
+    })
+    
 })
 
 app.post('/api/delete-blog',(req, res)=>{
     let param = req.body;
-    let id = param.id;
+    let blogId = param.blogId;
     sequelize.transaction((t)=>{
-        return BLOG.destroy({
-            where:{
-                id:id
-            }
-        }).then(()=>{
-            return COMMENTS.destroy({
+        return BLOG.findOne({
                 where:{
-                    blogId:id
+                    blogId:blogId
                 }
             })
-        }).then(()=>{
-
-            return replycomments.destroy({
-                where:{
-                    blogId:id
-                }
+            .then((rst)=>{
+                return util.deleteImg({text:rst.content})
             })
-        })
+            .then(()=>{
+                return BLOG.destroy({
+                        where:{
+                            id:id
+                        }
+                    })
+            })
+            .then(()=>{
+                return COMMENTS.destroy({
+                    where:{
+                        blogId:id
+                    }
+                })
+            }).then(()=>{
+                return replycomments.destroy({
+                    where:{
+                        blogId:id
+                    }
+                })
+            })
     })
     .then(()=>{
         let data = {
@@ -557,15 +590,6 @@ const mySqlHandle = (sql)=>{
             }
         })
     })
-}
-
-var errHandle = (err)=>{
-    throw err;
-}
-
-function nowTime(){
-    var time = new Date();
-    return `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
 }
 
 function insertSql(tabel,obj){

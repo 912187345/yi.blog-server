@@ -1,22 +1,28 @@
+const fs = require('fs');
 const moment = require('moment');
 const cheerio = require('cheerio');
 const images = require('images');
+
+const config = require('./config');
+const blogImgPath = config.blogImgPath;
+
 module.exports = (()=>{
     return {
         momentDate(time){
             return moment(time).format('YYYY-MM-DD HH:mm:ss');
         },
         base64Change(obj){ //base64转换成img
-            let $ = cheerio.load(obj.text);
+            let text = obj.text;
+            let $ = cheerio.load(text);
             let img = $('img');
             let fileName = obj.fileName;
             return new Promise((res,rej)=>{
-                if( !img.length ){ return res() }
+                if( !img.length ){ return res(text) }
                 for( let i = 0; i < img.length; i++ ){
                     let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
                     let dataBuffer = new Buffer(base64Data,'base64');
                     let opt = {
-                        fileName:WRITEPATH+blogId+i+'.jpg',
+                        fileName:blogImgPath+fileName+i+'.jpg',
                         dataBuffer:dataBuffer
                     }
                     try{
@@ -34,7 +40,6 @@ module.exports = (()=>{
                         })
                     } catch(err) {
                         rej();
-                        console.log(err);
                     }
                 }
             })
@@ -49,6 +54,35 @@ module.exports = (()=>{
                     }
                 })
             })
+        },
+        deleteImg(obj){//删除图片
+            let text = obj.text;
+            return new Promise((res,rej)=>{
+                let $ = cheerio.load(text);
+                let img = $('img');
+                if( !img.length ){ return res() }
+                for( let i = 0; i < img.length; i++ ){
+                    let path = img[i].attribs.src;
+                    console.log('path',path);
+                    fs.unlink(__dirname+'/static'+path,(err)=>{
+                        if(err) {
+                            this.errHandle(err);
+                            rej()
+                        } else {
+                            if(i+1 === img.length){
+                                res();
+                            }
+                        }
+                    })  
+                }
+            })
+        },
+        nowTime(){
+            var time = new Date();
+            return `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
+        },
+        errHandle(err){
+            throw err;
         }
     }
 })()
