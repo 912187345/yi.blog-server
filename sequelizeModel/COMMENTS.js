@@ -8,9 +8,6 @@ module.exports = sequelize.define('comments',{
     commentsContent:{
         type:Sequelize.STRING
     },
-    commentsName:{
-        type:Sequelize.STRING
-    },
     commentsToken:Sequelize.STRING,
     commentsDate:{
         type:Sequelize.DATE,

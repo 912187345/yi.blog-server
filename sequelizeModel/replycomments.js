@@ -18,8 +18,6 @@ const replycomments = sequelize.define('replycomments',{
     commentsId:Sequelize.STRING,
     toToken:Sequelize.STRING,
     fromToken:Sequelize.STRING,
-    toName:Sequelize.STRING,
-    fromName:Sequelize.STRING,
     id:{
         type:Sequelize.INTEGER,
         primaryKey:true

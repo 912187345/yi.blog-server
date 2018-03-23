@@ -24,9 +24,9 @@ function main(){
         foreignKey:'blogId'
     })
     
-    COMMENTS.hasOne(USER,{
-        foreignKey:'token',
-        targetKey:'commentsToken',
+    COMMENTS.belongsTo(USER,{
+        targetKey:'token',
+        foreignKey:'commentsToken',
         as:'commentsUser'
     })
     COMMENTS.belongsTo(BLOG,{

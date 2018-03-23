@@ -56,13 +56,13 @@ app.use(cookieParser());
 app.use(express.static('./static'));
 
 app.use((req,res,next)=>{ //拦截器
-    let url = ['/api/register','/api/logon','/api/upload-head-image'] //里面的请求不需要带token
+    let url = ['/api/register','/api/logon','/api/upload-head-image','/api/get-blog','/api/get-blog-by-id'] //里面的请求不需要带token
     if( url.indexOf(req.originalUrl) === -1 && req.originalUrl.indexOf('/api/') !== -1 ){
 
-        if(!req.body.token){
+        if(req.body.token === "undefined" || req.body.token === "null" || !req.body.token){
 
             let data = {
-                status:FAIL,
+                status:'Re',
                 data:'请重新登录',
                 noToken:true
             }
@@ -444,16 +444,16 @@ app.post('/api/get-blog-by-id',(req, res)=>{
                 include:[
                 {
                     model:USER,
-                    attributes:['headImg'],
+                    attributes:['headImg','username'],
                     as:'fromUser'
                 },{
                     model:USER,
-                    attributes:['headImg'],
+                    attributes:['headImg','username'],
                     as:'toUser'
                 }]
             },{
                 model:USER,
-                attributes:['headImg'],
+                attributes:['headImg','username'],
                 as:'commentsUser'
             }]
         }],
