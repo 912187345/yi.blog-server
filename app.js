@@ -162,6 +162,35 @@ app.post('/api/upload-head-image',(req,res)=>{
         })
     })
 })
+
+app.post('/api/edit-user',(req, res)=>{
+    let param = req.body;
+    let updateParam;
+    switch(param.type){
+        case 'username':
+            updateParam = {
+                username:param.value
+            }
+            break;
+        case 'email':
+            updateParam = {
+                email:param.value
+            }
+            break;
+    }
+    USER.update(updateParam,{where:{token:param.token}})
+    .then((rst)=>{
+        let data = {
+            status:SUCCESS
+        }
+        res.send(data);
+    },err=>{
+        errHandle(err);
+    })
+    .catch((err)=>{
+        errHandle(err)
+    })
+})
 // setting
 
 // 登录 S
