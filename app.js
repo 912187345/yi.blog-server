@@ -19,6 +19,7 @@ const FAIL = config.FAIL;
 const SUCCESS = config.SUCCESS;
 const DEFAULT_BOY_ICON = config.DEFAULT_BOY_ICON;
 const DEFAULT_GIRL_ICON = config.DEFAULT_GIRL_ICON;
+const DEFAULT_USER_BACKGROUND = config.DEFAULT_USER_BACKGROUND;
 const nowTime = util.nowTime;
 const errHandle = util.errHandle;
 
@@ -56,7 +57,7 @@ app.use(cookieParser());
 app.use(express.static('./static'));
 
 app.use((req,res,next)=>{ //拦截器
-    let url = ['/api/register','/api/logon','/api/upload-head-image','/api/get-blog','/api/get-blog-by-id'] //里面的请求不需要带token
+    let url = ['/api/register','/api/logon','/api/upload-head-image','/api/get-blog','/api/get-blog-by-id','/api/set-background'] //里面的请求不需要带token
     if( url.indexOf(req.originalUrl) === -1 && req.originalUrl.indexOf('/api/') !== -1 ){
 
         if(req.body.token === "undefined" || req.body.token === "null" || !req.body.token){
@@ -189,6 +190,89 @@ app.post('/api/edit-user',(req, res)=>{
     })
     .catch((err)=>{
         errHandle(err)
+    })
+})
+
+app.post('/api/set-background',(req, res)=>{
+    let form = new multiparty.Form({uploadDir:__dirname+'/static/bg'});
+    form.parse(req,(err, fields, files)=>{
+        let inputFile = files.file[0];
+        let filePath = files.file[0].path;
+        let token = fields.token[0];
+        let newBackground = '/bg/'+fields.token[0]+new Date().getTime()+'.jpg';
+        let renamePath = __dirname+'/static' + newBackground;
+
+        sequelize.transaction(()=>{
+            return USER.findOne({
+                where:{token:token}
+            })
+            .then((rst)=>{
+                return new Promise((res,rej)=>{
+                    if(rst.background && rst.background !== DEFAULT_USER_BACKGROUND){
+                        fs.unlink(__dirname+'/static'+rst.background,(err)=>{
+                            if(err) {
+    
+                                errHandle(err);
+                                rej()
+                            } else {
+    
+                                res();
+                            }
+                        })        
+                    }else{
+                        res();
+                    }
+                })
+            })
+            .then(()=>{
+                return new Promise((suc,rej)=>{
+                    fs.rename(filePath,renamePath,(err)=>{
+                        if(!err){
+                            USER.update({
+                                background:newBackground
+                            },{
+                                where:{
+                                    token:token
+                                }
+                            })
+                            .then(()=>{
+                                images(renamePath)
+                                .save(renamePath,{
+                                    quality:80
+                                })
+                                suc();
+                            },err=>{
+                                rej();
+                            })
+                            .catch(err=>{
+                                errHandle(err);
+                                rej();
+                            })
+                        }else{
+                            errHandle(err);
+                            rej();
+                        }
+                    })
+                })
+            })
+        })
+        .then((rst)=>{
+            let data = {
+                status:SUCCESS,
+                data:{
+                    background:newBackground
+                }
+            }
+            res.send(data);
+        })
+        .catch(()=>{
+            let data = {
+                status:FAIL,
+                data:''
+            }
+            res.send(data);
+            errHandle(err);
+        })
     })
 })
 // setting

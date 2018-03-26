@@ -11,5 +11,6 @@ module.exports = sequelize.define('user',{
     sex:Sequelize.STRING,
     email:Sequelize.STRING,
     token:Sequelize.STRING,
-    headImg:Sequelize.STRING
+    headImg:Sequelize.STRING,
+    background:Sequelize.STRING
 },{timestamps: false,freezeTableName: true})
