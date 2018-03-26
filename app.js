@@ -238,7 +238,7 @@ app.post('/api/set-background',(req, res)=>{
                             .then(()=>{
                                 images(renamePath)
                                 .save(renamePath,{
-                                    quality:80
+                                    quality:50
                                 })
                                 suc();
                             },err=>{
