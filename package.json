@@ -30,9 +30,10 @@
     "node-uuid": "^1.4.8",
     "pg": "^7.4.1",
     "pg-hstore": "^2.3.2",
-    "sequelize": "^4.35.2",
+    "sequelize": "^4.37.5",
     "sqlite3": "^3.1.13",
     "tedious": "^2.3.1",
     "vue": "^2.4.2"
   }
 }
+SELECT `blog`.`title`, `blog`.`blogId`, `blog`.`date`, `user`.`userid` AS `user.userid`, `user`.`username` AS `user.username`, `user`.`headImg` AS `user.headImg`, `comments`.`blogId` AS `comments.blogId`, `comments`.`commentsContent` AS `comments.commentsContent`, `comments`.`commentsToken` AS `comments.commentsToken`, `comments`.`date` AS `comments.commentsDate`, `comments`.`id` AS `comments.id` FROM `blog` AS `blog` LEFT OUTER JOIN `user` AS `user` ON `blog`.`userToken` = `user`.`token` LEFT OUTER JOIN `comments` AS `comments` ON `blog`.`blogId` = `comments`.`blogId` ORDER BY `blog`.`date` DESC

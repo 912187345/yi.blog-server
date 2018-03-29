@@ -371,30 +371,31 @@ app.post('/api/logon',(req,res)=>{
 // blog S 后期需要拆分开
 app.post('/api/get-blog',(req, res)=>{
     let param = req.body;
-    let where = {};
-    if( param.myBlog === true ){
-        where.userToken = param.token;
+    let limit = param.limit || 10;
+    let offset = param.offset || 0;
+    //  sequelize findAll如果有联合查询，再加上limit的时候有bug，github上也有人提了相信下个版本会修复，先用原生语句查询
+    // BLOG.findAll({
+    //     where:where,
+    //     attributes:['title','blogId','date'],
+    //     include:[{
+    //         model:USER,
+    //         attributes:['username','headImg'],
+    //     },{
+    //         model:COMMENTS
+    //     }],
+    //     order:[['date','DESC']]
+    // })
+    if(param.myBlog === true){
+        var get_blog_sql = `select * from get_list WHERE userToken = "${param.token}" LIMIT ${offset},${limit}`;
+    }else{
+
+        var get_blog_sql = `select * from get_list LIMIT ${offset},${limit}`;
     }
-    BLOG.findAll({
-        where:where,
-        attributes:['title','blogId','date'],
-        include:[{
-            model:USER,
-            attributes:['username','headImg'],
-        },{
-            model:COMMENTS
-        }],
-        order:[['date','DESC']]
-    })
+    mySqlHandle(get_blog_sql)
     .then((rst)=>{
-        let va = rst;
-        for( let i = 0; i < va.length;i++ ){
-            va[i].dataValues.commentsLength = va[i].dataValues.comments.length;
-            delete va[i].dataValues.comments;
-        }
         let data = {
             status:SUCCESS,
-            data:va
+            data:rst
         }
         res.send(data);
     },err=>{
@@ -404,7 +405,7 @@ app.post('/api/get-blog',(req, res)=>{
         }
         res.send(data)
     })
-    let mysql = `select title,blogId from blog`;
+    //let mysql = `select title,blogId from blog`;
 })
 
 app.post('/api/add-blog',(req, res, next)=>{
