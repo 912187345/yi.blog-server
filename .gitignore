@@ -3,8 +3,15 @@
 ##############################
 node_modules
 .vscode
+./static/userHeaderIcon
+./static/bg
+./static/blogImage
  
 ##############################
 ## Netbeans conf            ##
 ##############################
 sequelizeConfig.js
+static/icon/reply.png
+.gitignore
+test.js
+ftp.js

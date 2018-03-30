@@ -19,7 +19,7 @@ module.exports = (()=>{
             return new Promise((res,rej)=>{
                 if( !img.length ){ return res(text) }
                 for( let i = 0; i < img.length; i++ ){
-                    if( img[i].attribs.src.indexOf('data:image\/\w+;base64') === -1 ){ 
+                    if( !(/^data:image\/\w+;base64,/.test(img[i].attribs.src)) ){ 
                         continue;
                     }
                     let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");

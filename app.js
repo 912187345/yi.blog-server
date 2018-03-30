@@ -442,6 +442,17 @@ app.post('/api/add-blog',(req, res, next)=>{
             }
             res.send(data);
         })
+    },err=>{
+        let data = {
+            status:FAIL
+        }
+        res.send(data);
+    })
+    .catch(err=>{
+        let data = {
+            status:FAIL
+        }
+        res.send(data);
     })
     let mysql = `insert into blog (userToken,date,text,blogId,title) 
                     values( "${userToken}", "${date}", "${text}", "${blogId}", "${title}")`;
@@ -509,27 +520,27 @@ app.post('/api/delete-blog',(req, res)=>{
             .then(()=>{
                 return BLOG.destroy({
                         where:{
-                            id:id
+                            blogId:blogId
                         }
                     })
             })
             .then(()=>{
                 return COMMENTS.destroy({
                     where:{
-                        blogId:id
+                        blogId:blogId
                     }
                 })
             }).then(()=>{
                 return replycomments.destroy({
                     where:{
-                        blogId:id
+                        blogId:blogId
                     }
                 })
             })
     })
     .then(()=>{
         let data = {
-            status:SUCCESS,
+            status:SUCCESS
         }
         res.send(data);
     })
@@ -570,6 +581,9 @@ app.post('/api/get-blog-by-id',(req, res)=>{
                 attributes:['headImg','username'],
                 as:'commentsUser'
             }]
+        },{
+            model:USER,
+            attributes:['headImg','username'],
         }],
         order:[[COMMENTS,replycomments,'replyDate','ASC']]
     })
@@ -658,12 +672,9 @@ app.post('/api/reply-comments',(req, res)=>{
         replyText:param.text,
         commentsId:param.commentsId,
         replyDate:nowTime(),
-        toName:param.toName,
-        fromName:param.fromName,
         blogId:param.blogId
     }
-    let sql = insertSql('replyComments',obj);
-    mySqlHandle(sql)
+    replycomments.create(obj)
     .then(rst=>{
         let data = {
             status:SUCCESS,
