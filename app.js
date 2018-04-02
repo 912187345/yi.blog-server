@@ -393,6 +393,9 @@ app.post('/api/get-blog',(req, res)=>{
     }
     mySqlHandle(get_blog_sql)
     .then((rst)=>{
+        for( let i = 0, len = rst.length; i< len ;i++ ){
+            rst[i].date = util.momentDate(rst[i].date);
+        }
         let data = {
             status:SUCCESS,
             data:rst
@@ -471,7 +474,7 @@ app.post('/api/edit-blog',(req, res)=>{
                 }
             })
             .then((rst)=>{
-                return util.deleteImg({text:rst.content})
+                return util.deleteImg({text:rst.content,editText:text})
             })
             .then(()=>{
                 return util.base64Change({text:text,fileName:blogId})
@@ -691,7 +694,7 @@ fs.readFile(__dirname+'/static/index.html',(err,data)=>{
 })
 
 // blog E
-const port = process.env.port || 8085;
+const port = process.env.port || 8086;
 app.listen(port);
 
 // common function S

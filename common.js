@@ -20,6 +20,9 @@ module.exports = (()=>{
                 if( !img.length ){ return res(text) }
                 for( let i = 0; i < img.length; i++ ){
                     if( !(/^data:image\/\w+;base64,/.test(img[i].attribs.src)) ){ 
+                        if( i+1 === img.length ){
+                            res(text);
+                        }
                         continue;
                     }
                     let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
@@ -42,6 +45,7 @@ module.exports = (()=>{
                             }
                         })
                     } catch(err) {
+                        this.errHandle(err);
                         rej();
                     }
                 }
@@ -64,28 +68,60 @@ module.exports = (()=>{
             return new Promise((res,rej)=>{
                 let $ = cheerio.load(text);
                 let img = $('img');
+
                 if( !img.length ){ return res() }
+
+                if( obj.editText ){
+                    var e = cheerio.load(obj.editText);
+                    var editImg = e('img');
+                    var editSrcArray = [];
+                    for( let i = 0, len = editImg.length; i < len ;i++ ){
+                        editSrcArray.push(editImg[i].attribs.src)
+                    }
+                }
+
                 for( let i = 0; i < img.length; i++ ){
                     let path = img[i].attribs.src;
-                    console.log('path',path);
-                    fs.unlink(__dirname+'/static'+path,(err)=>{
-                        if(err) {
-                            this.errHandle(err);
-                            rej()
-                        } else {
+                    if( obj.editText ){
+                        if(editSrcArray.indexOf(path) === -1){
+                            this.deleteFile('/static' + path)
+                            .then(()=>{
+                                
+                            },err=>{ res() })
+                        }
+                        if(i+1 === img.length){
+                            res();
+                        }
+                    } else {
+
+                        this.deleteFile('/static' + path)
+                        .then(()=>{
                             if(i+1 === img.length){
                                 res();
                             }
-                        }
-                    })  
+                        },err=>{ res() })
+                    }
                 }
+            })
+        },
+        deleteFile(path){
+            return new Promise((res,rej)=>{
+                fs.unlink(__dirname+path,(err)=>{
+                    if(err) {
+                        // this.errHandle(err);
+                        rej()
+                    } else {
+                        res();
+                    }
+                })
+                
             })
         },
         nowTime(){
             var time = new Date();
             return `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
         },
-        errHandle(err){
+        errHandle(err,type){
             throw err;
         }
     }
