@@ -51,18 +51,6 @@ module.exports = (()=>{
                 }
             })
         },
-        writeFile(opt){
-            return new Promise((res,rej)=>{
-                fs.writeFile(opt.fileName,opt.dataBuffer,(err,file)=>{
-                    if(err){
-                        throw err;
-                    }else{
-                        res(file);
-                    }
-                })
-            })
-        },
-        // 如果图片是一样的就不要删除
         deleteImg(obj){//删除图片
             let text = obj.text;
             return new Promise((res,rej)=>{
@@ -102,6 +90,17 @@ module.exports = (()=>{
                         },err=>{ res() })
                     }
                 }
+            })
+        },
+        writeFile(opt){
+            return new Promise((res,rej)=>{
+                fs.writeFile(opt.fileName,opt.dataBuffer,(err,file)=>{
+                    if(err){
+                        throw err;
+                    }else{
+                        res(file);
+                    }
+                })
             })
         },
         deleteFile(path){

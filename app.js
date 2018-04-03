@@ -42,11 +42,20 @@ sequelize
 app.use(bodyParser.urlencoded({ limit:'50mb',extended: true }))
 app.use(bodyParser.json({limit:'50mb'}));
 
+var sqlName,sqlPwd,host;
+if(process.env.NODE_ENV === 'dev'){
+    sqlName = 'root';
+    sqlPwd = '69824686';
+    host = 'localhost';
+}else if(process.env.NODE_ENV === 'pro'){
+    sqlName = 'root';
+    sqlPwd = '69824686gg';
+    host = '120.79.208.33';
+}
 const mysqlConOption = {
-    host     : 'localhost',
-    user     : 'root',
-    password : '69824686',
-    // password : '',
+    host     : host,
+    user     : sqlName,
+    password : sqlPwd,
     database : 'blog',
     dateStrings:true
 }
@@ -210,14 +219,7 @@ app.post('/api/set-background',(req, res)=>{
                 return new Promise((res,rej)=>{
                     if(rst.background && rst.background !== DEFAULT_USER_BACKGROUND){
                         fs.unlink(__dirname+'/static'+rst.background,(err)=>{
-                            if(err) {
-    
-                                errHandle(err);
-                                rej()
-                            } else {
-    
-                                res();
-                            }
+                            res();
                         })        
                     }else{
                         res();
@@ -694,8 +696,16 @@ fs.readFile(__dirname+'/static/index.html',(err,data)=>{
 })
 
 // blog E
-const port = process.env.port || 8086;
-app.listen(port);
+if( process.env.NODE_ENV === 'dev' ){
+    const port = process.env.port || 8086;
+    app.listen(port);
+}else if( process.env.NODE_ENV === 'pro' ){
+    const port = 80;
+    app.listen(port,'172.18.93.110',()=>{
+        console.log('server start');
+    });
+}
+
 
 // common function S
 const mySqlHandle = (sql)=>{
