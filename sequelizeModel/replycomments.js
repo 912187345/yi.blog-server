@@ -11,8 +11,13 @@ const replycomments = sequelize.define('replycomments',{
     replyDate:{
         type:Sequelize.STRING,
         get(){
-            const date = this.getDataValue('replyDate');
-            return utl.momentDate(date);
+            try{
+                const date = this.getDataValue('replyDate');
+                return utl.momentDate(date);
+            }catch(err){
+                return this.getDataValue('replyDate');
+            }
+            
         }
     },
     commentsId:Sequelize.STRING,

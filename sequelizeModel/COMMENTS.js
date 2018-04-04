@@ -13,8 +13,13 @@ module.exports = sequelize.define('comments',{
         type:Sequelize.DATE,
         field:'date',
         get(){
-            let date = this.getDataValue('date')
-            return utl.momentDate(date);
+            try{
+                let date = this.getDataValue('date')
+                return utl.momentDate(date);
+            }catch(err){
+                return this.getDataValue('date');
+            }
+            
         }
     },
     id:{

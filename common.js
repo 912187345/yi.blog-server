@@ -38,7 +38,7 @@ module.exports = (()=>{
                             text = text.replace(img[i].attribs.src,path);
                             images(opt.fileName)
                             .save(opt.fileName,{
-                                quality:50
+                                quality:config.IMAGE_QUALITY
                             })
                             if( i+1 === img.length ){
                                 res(text);

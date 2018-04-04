@@ -1,4 +1,5 @@
 'use strict';
+// process.env.NODE_ENV = 'dev';
 const express = require('express');
 const app = express();
 
@@ -135,7 +136,7 @@ app.post('/api/upload-head-image',(req,res)=>{
                             .then(()=>{
                                 images(renamePath)
                                 .save(renamePath,{
-                                    quality:60
+                                    quality:config.IMAGE_QUALITY
                                 })
                                 suc();
                             },err=>{
@@ -240,7 +241,7 @@ app.post('/api/set-background',(req, res)=>{
                             .then(()=>{
                                 images(renamePath)
                                 .save(renamePath,{
-                                    quality:50
+                                    quality:config.IMAGE_QUALITY
                                 })
                                 suc();
                             },err=>{
@@ -288,6 +289,7 @@ app.post('/api/register',(req, res)=>{
     let sex = param.sex;
     let token = uuid.v4().replace(/-/g,'');
     let defaultHeadImg = sex === 'boy' ? DEFAULT_BOY_ICON : DEFAULT_GIRL_ICON;
+    let registerDate = util.nowTime();
     USER.findOrCreate({
         where:{
             username:username
@@ -297,7 +299,8 @@ app.post('/api/register',(req, res)=>{
             sex:sex,
             email:email,
             token:token,
-            headImg:defaultHeadImg
+            headImg:defaultHeadImg,
+            registerDate:registerDate
         }
     })
     .spread((user,create)=>{
@@ -310,7 +313,8 @@ app.post('/api/register',(req, res)=>{
                         email:email,
                         sex:sex,
                         token:token,
-                        headImg:defaultHeadImg
+                        headImg:defaultHeadImg,
+                        registerDate:registerDate
                     }
                 }
             res.send(data);

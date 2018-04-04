@@ -9,15 +9,24 @@ module.exports = sequelize.define('blog',{
     date:{
         type:Sequelize.DATE,
         get(){
-            let date = this.getDataValue('date')
-            return utl.momentDate(date);
+            try{
+                let date = this.getDataValue('date')
+                return utl.momentDate(date);
+            }catch(err){
+                return this.getDataValue('date');
+            }
         }
     },
     updateTime:{
         type:Sequelize.DATE,
         get(){
-            let date = this.getDataValue('updateTime')
-            return utl.momentDate(date);
+            try{
+                let date = this.getDataValue('updateTime')
+                return utl.momentDate(date);
+            }catch(err){
+                return this.getDataValue('updateTime');
+            }
+            
         }
     },
     content:{
