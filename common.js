@@ -2,8 +2,30 @@ const fs = require('fs');
 const moment = require('moment');
 const cheerio = require('cheerio');
 const images = require('images');
+const config = require('./config/config');
+const connection = require('./config/mysqlConnection');
+const log4js = require('log4js');
 
-const config = require('./config');
+log4js.configure({
+    replaceConsole:true,
+    appenders:{
+        stdout:{
+            type:'stdout'
+        },
+        err:{
+            type:'dateFile',
+            filename:'logs/errlog/',
+            pattern:'err-yyyy-MM-dd  hh:mm.log',
+            alwaysIncludePattern:true
+        }
+    },
+    categories:{
+        default: { appenders: ['stdout', 'err'], level: 'debug' },
+        err:{ appenders:['stdout', 'err'],level:'error' }
+    }
+})
+
+const errLogger = log4js.getLogger('err');
 const blogImgPath = config.blogImgPath;
 
 module.exports = (()=>{
@@ -120,8 +142,24 @@ module.exports = (()=>{
             var time = new Date();
             return `${time.getFullYear()}-${time.getMonth()+1}-${time.getDate()} ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
         },
-        errHandle(err,type){
-            throw err;
+        errHandle(err,type=''){
+            errLogger.error(type+''+err)
+        },
+        mySqlHandle(sql){
+            return new Promise((res, rej)=>{
+                connection.query(sql,(err, rst, fields)=>{
+        
+                    if( err ) this.errHandle(err)
+        
+                    if( rst ){
+        
+                        res(rst)
+                    }else if( fields ){
+        
+                        rej(fields);
+                    }
+                })
+            })
         }
     }
 })()
