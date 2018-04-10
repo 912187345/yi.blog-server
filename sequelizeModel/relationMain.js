@@ -53,4 +53,10 @@ function main(){
         sourceKey:'id'
     })
 }
-module.exports = main;
+main()
+module.exports = {
+    USER:USER,
+    COMMENTS:COMMENTS,
+    BLOG:BLOG,
+    replycomments:replycomments
+};

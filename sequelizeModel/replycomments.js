@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize'); 
-const sequelize = require('../sequelizeConfig');
+const sequelize = require('../config/sequelizeConfig');
 const utl = require('../common');
 
 const USER = require('./USER');
@@ -12,8 +12,9 @@ const replycomments = sequelize.define('replycomments',{
         type:Sequelize.STRING,
         get(){
             try{
-                const date = this.getDataValue('replyDate');
-                return utl.momentDate(date);
+                let date = this.getDataValue('replyDate');
+                let momentDate = utl.momentDate(date);
+                return momentDate;
             }catch(err){
                 return this.getDataValue('replyDate');
             }

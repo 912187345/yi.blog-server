@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize'); 
-const sequelize = require('../sequelizeConfig');
+const sequelize = require('../config/sequelizeConfig');
 const utl = require('../common');
 module.exports = sequelize.define('blog',{
     blogId:{
