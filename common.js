@@ -34,41 +34,50 @@ module.exports = (()=>{
             return moment(time).format('YYYY-MM-DD HH:mm:ss');
         },
         base64Change(obj){ //base64转换成img
-            let text = obj.text;
-            let $ = cheerio.load(text);
-            let img = $('img');
-            let fileName = obj.fileName;
             return new Promise((res,rej)=>{
-                if( !img.length ){ return res(text) }
-                for( let i = 0; i < img.length; i++ ){
-                    if( !(/^data:image\/\w+;base64,/.test(img[i].attribs.src)) ){ 
-                        if( i+1 === img.length ){
-                            res(text);
-                        }
-                        continue;
+                let text = obj.text;
+                let $ = cheerio.load(text);
+                let img = $('img');
+                let fileName = obj.fileName;
+                let promiseArr = [];
+                if( !img.length ){ 
+                    return res(text);
+                }
+                let num = 0;
+                let that = this;
+                return changeImg(text);
+                function changeImg(text){
+                    if( num === img.length ){
+                       return res(text);
                     }
-                    let base64Data = img[i].attribs.src.replace(/^data:image\/\w+;base64,/, "");
+                    
+                    let imgSrc = img[num].attribs.src;
+                    if(!(/^data:image\/\w+;base64,/.test(imgSrc))){
+                        num++;
+                        return changeImg(text);
+                    }
+                    let base64Data = imgSrc.replace(/^data:image\/\w+;base64,/, "");
                     let dataBuffer = new Buffer(base64Data,'base64');
                     let opt = {
-                        fileName:blogImgPath+fileName+i+'.jpg',
+                        fileName:blogImgPath+fileName+num+'.jpg',
                         dataBuffer:dataBuffer
                     }
                     try{
-                        this.writeFile(opt)
+                        that.writeFile(opt)
                         .then((rst)=>{
                             let path = opt.fileName.replace('./static','');
-                            text = text.replace(img[i].attribs.src,path);
+                            text = text.replace(imgSrc,path);
+                            num++;
+                            changeImg(text);
                             images(opt.fileName)
                             .save(opt.fileName,{
                                 quality:config.IMAGE_QUALITY
                             })
-                            if( i+1 === img.length ){
-                                res(text);
-                            }
                         })
                     } catch(err) {
-                        this.errHandle(err);
-                        rej();
+                        that.errHandle(err);
+                        num++;
+                        changeImg(text);
                     }
                 }
             })

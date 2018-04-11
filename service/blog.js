@@ -150,7 +150,7 @@ router.route('/edit-blog')
                 return util.deleteImg({text:rst.content,editText:text})
             })
             .then(()=>{
-                return util.base64Change({text:text,fileName:blogId})
+                return util.base64Change({text:text,fileName:blogId+new Date().getTime()})
             })
             .then((text)=>{
                 return BLOG.update({
