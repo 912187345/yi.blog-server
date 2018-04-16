@@ -1,5 +1,5 @@
 'use strict';
-process.env.NODE_ENV = 'dev';
+// process.env.NODE_ENV = 'dev';
 const compression = require('compression')
 const express = require('express');
 const app = express();
@@ -7,14 +7,8 @@ const app = express();
 const {moment,mysql,fs,bodyParser,cookieParser,session,uuid,cheerio,images,multiparty} = require('./lib');
 
 const util = require('./common');
-const config = require('./config/config');
+const { FAILl,SUCCESS,DEFAULT_BOY_ICON,DEFAULT_GIRL_ICON,DEFAULT_USER_BACKGROUND } = require('./config/config');
 const mysqlConfig = require('./config/mysqlConfig');
-
-const FAIL = config.FAIL;
-const SUCCESS = config.SUCCESS;
-const DEFAULT_BOY_ICON = config.DEFAULT_BOY_ICON;
-const DEFAULT_GIRL_ICON = config.DEFAULT_GIRL_ICON;
-const DEFAULT_USER_BACKGROUND = config.DEFAULT_USER_BACKGROUND;
 
 const { nowTime,errHandle,mySqlHandle } = util;
 
