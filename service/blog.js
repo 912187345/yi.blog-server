@@ -5,9 +5,31 @@ const util = require('../common');
 const { nowTime,errHandle,mySqlHandle } = util;
 
 const sequelize = require('../config/sequelizeConfig');
-const {FAIL,SUCCESS,DEFAULT_BOY_ICON,DEFAULT_GIRL_ICON,DEFAULT_USER_BACKGROUND,IMAGE_QUALITY} = require('../config/config');
-const { USER,BLOG,COMMENTS,replycomments } = require('../sequelizeModel/relationMain');
-const {multiparty,fs,images} = require('../lib');
+
+const {
+    FAIL,
+    SUCCESS,
+    DEFAULT_BOY_ICON,
+    DEFAULT_GIRL_ICON,
+    DEFAULT_USER_BACKGROUND,
+    IMAGE_QUALITY,
+    URL
+} = require('../config/config');
+
+const { 
+    USER,
+    BLOG,
+    COMMENTS,
+    replycomments,
+    collection
+} = require('../sequelizeModel/relationMain');
+
+const {
+    multiparty,
+    fs,
+    images,
+    cheerio
+} = require('../lib');
 
 router.route('/get-blog')
 .post((req,res)=>{
@@ -93,6 +115,7 @@ router.route('/get-blog-by-id')
 .post((req,res)=>{
     let token = req.body.token;
     let id = req.body.id;
+    let addUrl = req.body.addUrl || null;
     BLOG.findOne({
         where:{blogId:id},
         include:[{
@@ -112,7 +135,7 @@ router.route('/get-blog-by-id')
                     model:USER,
                     attributes:['headImg','username'],
                     as:'toUser'
-                }]
+                }],
             },{
                 model:USER,
                 attributes:['headImg','username'],
@@ -122,14 +145,37 @@ router.route('/get-blog-by-id')
             model:USER,
             attributes:['headImg','username'],
         }],
-        order:[[COMMENTS,replycomments,'replyDate','ASC']]
+        order:[[COMMENTS,'date','ASC']]
     })
     .then(rst=>{
         let data = {
             status:SUCCESS,
             data:rst
         }
-        res.send(data)
+        if( addUrl ){
+            let $ = cheerio.load(data.data.content);
+            let img = $('img');
+            if( img.length ){
+                for( let i = 0, len = img.length; i < len;i++ ){
+                    data.data.content = data.data.content.replace(img[i].attribs.src,URL+img[i].attribs.src);
+                }
+            }
+        }
+        let sql = `select token as "collectionUser", (select token from collection where blogId="${id}" and token="${token}") as "collection" from collection where blogId="${id}"`;
+        mySqlHandle(sql)
+        .then((sqlData)=>{
+            data.data.dataValues.collection = {};
+            data.data.dataValues.collection.collectionNum = sqlData.length || 0;
+            data.data.dataValues.collection.collectionBol = sqlData[0]? (sqlData[0].collection?true:false) : false
+            res.send(data);
+        })
+        .catch(()=>{
+            data.data.dataValues.collection = {
+                collectionNum:0,
+                collectionBol:false
+            };
+            res.send(data)
+        })
     })    
 })
 
@@ -228,6 +274,77 @@ router.route('/delete-blog')
         }
         res.send(data);
         errHandle(err,'delete-blog')
+    })
+})
+
+router.route('/collection')
+.post((req,res)=>{
+    let type = req.body.type;
+    let userToken = req.body.token;
+    let blogId = req.body.blogId;
+    
+    let successData = {
+        status:SUCCESS
+    }
+    let errorData = {
+        status:FAIL
+    }
+
+    if( type === 'add' ){
+
+        collection.create({
+            blogId:blogId,
+            token:userToken
+        })
+        .then(()=>{
+            res.send(successData);
+        })
+        .catch(err=>{
+            util.errHandle(err,'/collection')
+            res.send(errorData);
+        })
+    } else if( type === 'cancel' ){
+
+        collection.destroy({
+            where:{
+                blogId:blogId,
+                token:userToken
+            }
+        })
+        .then(data=>{
+            res.send(successData);
+        })
+        .catch(err=>{
+            util.errHandle(err,'/collection')
+            res.send(errorData);
+        })
+    }
+})
+
+router.route('/get-collection')
+.post((req,res)=>{
+    let userToken = req.body.token;
+    let param = req.body;
+    let limit = param.limit || 10;
+    let offset = param.offset || 0;
+    let sql = `select * from get_collection where userToken="${userToken}" LIMIT ${offset},${limit}`;
+    mySqlHandle(sql)
+    .then(rst=>{
+        for( let i = 0, len = rst.length; i< len ;i++ ){
+            rst[i].date = util.momentDate(rst[i].date);
+        }
+        let data={
+            status:SUCCESS,
+            data:rst
+        }
+        res.send(data);
+    })
+    .catch(err=>{
+        let data={
+            status:FAIL,
+            data:err
+        }
+        res.send(data);
     })
 })
 

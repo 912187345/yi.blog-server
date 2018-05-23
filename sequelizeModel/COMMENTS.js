@@ -14,10 +14,10 @@ module.exports = sequelize.define('comments',{
         field:'date',
         get(){
             try{
-                let date = this.getDataValue('date')
+                let date = this.getDataValue('commentsDate')
                 return utl.momentDate(date);
             }catch(err){
-                return this.getDataValue('date');
+                return this.getDataValue('commentsDate');
             }
             
         }

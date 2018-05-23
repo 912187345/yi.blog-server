@@ -15,7 +15,7 @@ router.route('/blog-comments')
     let obj = {
         blogId:param.blogId,
         commentsContent:param.text,
-        date:nowTime(),
+        commentsDate:nowTime(),
         commentsToken:param.token,
         id:'' + param.blogId + new Date().getTime(),
         commentsName:param.commentsName

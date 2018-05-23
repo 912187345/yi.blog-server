@@ -2,6 +2,7 @@ const USER = require('./USER');
 const COMMENTS = require('./COMMENTS');
 const BLOG = require('./BLOG');
 const replycomments = require('./replycomments');
+const collection = require('./collection');
 function main(){
     USER.hasMany(BLOG,{
         sourceKey:'token',
@@ -18,7 +19,8 @@ function main(){
     
     BLOG.belongsTo(USER,{
         foreignKey:'userToken',
-        targetKey:'token'
+        targetKey:'token',
+        through:'collection'
     })
     BLOG.hasMany(COMMENTS,{
         foreignKey:'blogId'
@@ -52,11 +54,25 @@ function main(){
         foreignKey:'commentsId',
         sourceKey:'id'
     })
+
+    USER.belongsToMany(BLOG,{
+        as:'collectionBlog',
+        through:'collection',
+        foreignKey:'token',
+        otherKey:'blogId'
+    })
+    BLOG.belongsToMany(USER,{
+        as:'collectionUser',
+        through:'collection',
+        foreignKey:'blogId',
+        otherKey:'token'
+    })
 }
 main()
 module.exports = {
     USER:USER,
     COMMENTS:COMMENTS,
     BLOG:BLOG,
-    replycomments:replycomments
+    replycomments:replycomments,
+    collection:collection
 };

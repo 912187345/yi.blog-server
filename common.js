@@ -158,7 +158,7 @@ module.exports = (()=>{
             return new Promise((res, rej)=>{
                 connection.query(sql,(err, rst, fields)=>{
         
-                    if( err ) this.errHandle(err)
+                    if( err ) {rej(err)}
         
                     if( rst ){
         
